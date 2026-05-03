@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3-Back 记忆力挑战 Pro</title>
+    <!-- 引入 Chart.js 用于绘制成长曲线 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --primary-color: #38bdf8;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --accent-color: #6366f1;
+            --card-bg: rgba(30, 41, 59, 0.7);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Progress Bar */
+        #progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            transition: width 0.3s ease;
+        }
+
+        /* HUD */
+        #hud {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            opacity: 0.8;
+            display: flex;
+            gap: 20px;
+        }
+
+        #n-display { color: var(--accent-color); }
+        #combo-display { color: var(--primary-color); }
+
+        /* Main Game Area */
+        #game-container {
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            cursor: pointer;
+        }
+
+        #letter {
+            font-size: 150px;
+            font-weight: 800;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .animate-in { animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .animate-out { animation: fadeOut 0.3s ease forwards; }
+
+        /* Overlay & Menus */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            z-index: 200;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+
+        .config-card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        h1 { font-size: 2rem; color: var(--primary-color); margin-top: 0; }
+        .setting-item { margin: 20px 0; text-align: left; }
+        .setting-item label { display: block; margin-bottom: 10px; color: #94a3b8; font-size: 0.9rem; }
+        
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .val-preview { float: right; color: var(--text-color); font-weight: bold; }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            padding: 15px 60px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(56, 189, 248, 0.4);
+        }
+
+        /* Chart & Stats */
+        .chart-container {
+            width: 100%;
+            max-width: 500px;
+            height: 200px;
+            margin: 20px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .stat-mini {
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-mini .val { font-size: 1.5rem; font-weight: bold; display: block; }
+        .stat-mini .lbl { font-size: 0.75rem; color: #64748b; }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 600px) {
+            #letter { font-size: 120px; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div id="hud">
+        <div id="n-display">N-Back: 3</div>
+        <div id="combo-display">Combo: 0</div>
+    </div>
+
+    <div id="game-container">
+        <div id="letter"></div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay">
+        <h1>3-Back 记忆训练 Pro</h1>
+        
+        <div class="config-card">
+            <div class="setting-item">
+                <label>难度等级 (N-Back) <span class="val-preview" id="n-val">3</span></label>
+                <input type="range" id="n-slider" min="1" max="5" step="1" value="3">
+            </div>
+            <div class="setting-item">
+                <label>字母间隔 (秒) <span class="val-preview" id="speed-val">2.0s</span></label>
+                <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="2.0">
+            </div>
+        </div>
+
+        <div class="config-card">
+            <label style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 10px; display: block;">历史最佳 (Best Record)</label>
+            <div id="high-score-board" style="font-size: 0.9rem; line-height: 1.8;">
+                暂无记录
+            </div>
+        </div>
+
+        <button class="btn" onclick="startGame()">立即开始</button>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" class="overlay hidden">
+        <h1>训练报告</h1>
+        
+        <div class="chart-container">
+            <canvas id="growthChart"></canvas>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-mini"><span id="res-correct" class="val" style="color:var(--success-color)">0</span><span class="lbl">正确</span></div>
+            <div class="stat-mini"><span id="res-missed" class="val" style="color:#f59e0b">0</span><span class="lbl">漏选</span></div>
+            <div class="stat-mini"><span id="res-wrong" class="val" style="color:var(--error-color)">0</span><span class="lbl">误触</span></div>
+            <div class="stat-mini"><span id="res-accuracy" class="val">0%</span><span class="lbl">本次准确率</span></div>
+        </div>
+
+        <button class="btn" onclick="showStartScreen()" style="margin-top: 30px;">返回主菜单</button>
+    </div>
+
+    <script>
+        // DOM Elements
+        const letterEl = document.getElementById('letter');
+        const progressBar = document.getElementById('progress-bar');
+        const comboEl = document.getElementById('combo-display');
+        const nEl = document.getElementById('n-display');
+        const startScreen = document.getElementById('start-screen');
+        const resultScreen = document.getElementById('result-screen');
+        
+        // Sliders
+        const nSlider = document.getElementById('n-slider');
+        const speedSlider = document.getElementById('speed-slider');
+        const nValPreview = document.getElementById('n-val');
+        const speedValPreview = document.getElementById('speed-val');
+
+        // Game State
+        let config = { n: 3, interval: 2000, total: 50 };
+        let sequence = [];
+        let currentIndex = -1;
+        let gameTimer = null;
+        let hasReacted = false;
+        let stats = { correct: 0, missed: 0, wrong: 0, combo: 0, history: [] };
+        let chartInstance = null;
+
+        // Sync Sliders
+        nSlider.oninput = () => { nValPreview.textContent = nSlider.value; config.n = parseInt(nSlider.value); };
+        speedSlider.oninput = () => { speedValPreview.textContent = speedSlider.value + 's'; config.interval = speedSlider.value * 1000; };
+
+        // Initialize Stats from LocalStorage
+        function loadStats() {
+            const data = localStorage.getItem('nback_stats');
+            if (data) stats.history = JSON.parse(data);
+            updateHighScoreBoard();
+        }
+
+        function updateHighScoreBoard() {
+            const board = document.getElementById('high-score-board');
+            if (stats.history.length === 0) return;
+            
+            // Get best accuracy per N
+            const bests = {};
+            stats.history.forEach(h => {
+                if (!bests[h.n] || h.acc > bests[h.n]) bests[h.n] = h.acc;
+            });
+
+            board.innerHTML = Object.keys(bests).sort().map(n => 
+                `<span>Level ${n}-Back: <b>${bests[n]}%</b></span>`
+            ).join(' | ');
+        }
+
+        function generateSequence() {
+            const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Removed similar looking I, O
+            const seq = [];
+            for (let i = 0; i < config.total; i++) {
+                if (i >= config.n && Math.random() < 0.3) {
+                    seq.push(seq[i - config.n]);
+                } else {
+                    let char;
+                    do { char = letters[Math.floor(Math.random() * letters.length)]; }
+                    while (i >= config.n && char === seq[i - config.n]);
+                    seq.push(char);
+                }
+            }
+            return seq;
+        }
+
+        function showStartScreen() {
+            resultScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            loadStats();
+        }
+
+        function startGame() {
+            startScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            
+            sequence = generateSequence();
+            currentIndex = -1;
+            stats.correct = 0;
+            stats.missed = 0;
+            stats.wrong = 0;
+            stats.combo = 0;
+
+            nEl.textContent = `N-Back: ${config.n}`;
+            updateComboUI();
+            nextStep();
+        }
+
+        function nextStep() {
+            // Check missed
+            if (currentIndex >= config.n && !hasReacted && sequence[currentIndex] === sequence[currentIndex - config.n]) {
+                stats.missed++;
+                stats.combo = 0;
+                updateComboUI();
+            }
+
+            currentIndex++;
+            if (currentIndex >= config.total) {
+                endGame();
+                return;
+            }
+
+            hasReacted = false;
+            letterEl.textContent = sequence[currentIndex];
+            letterEl.style.color = "var(--text-color)";
+            
+            letterEl.classList.remove('animate-in', 'animate-out');
+            void letterEl.offsetWidth;
+            letterEl.classList.add('animate-in');
+
+            setTimeout(() => letterEl.classList.add('animate-out'), config.interval * 0.85);
+
+            progressBar.style.width = ((currentIndex + 1) / config.total * 100) + "%";
+            gameTimer = setTimeout(nextStep, config.interval);
+        }
+
+        function handleInput() {
+            if (currentIndex < 0 || currentIndex >= config.total || hasReacted) return;
+            
+            hasReacted = true;
+            const isMatch = currentIndex >= config.n && sequence[currentIndex] === sequence[currentIndex - config.n];
+
+            if (isMatch) {
+                stats.correct++;
+                stats.combo++;
+                letterEl.style.color = "var(--success-color)";
+            } else {
+                stats.wrong++;
+                stats.combo = 0;
+                letterEl.style.color = "var(--error-color)";
+            }
+            updateComboUI();
+        }
+
+        function updateComboUI() {
+            comboEl.textContent = `Combo: ${stats.combo}`;
+        }
+
+        function endGame() {
+            clearTimeout(gameTimer);
+            const totalMatches = sequence.filter((l, i) => i >= config.n && l === sequence[i-config.n]).length;
+            const accuracy = totalMatches > 0 ? Math.round((stats.correct / totalMatches) * 100) : 0;
+
+            // Save History
+            stats.history.push({
+                date: new Date().toLocaleTimeString(),
+                n: config.n,
+                acc: accuracy
+            });
+            if (stats.history.length > 20) stats.history.shift(); // Keep last 20
+            localStorage.setItem('nback_stats', JSON.stringify(stats.history));
+
+            // UI
+            document.getElementById('res-correct').textContent = stats.correct;
+            document.getElementById('res-missed').textContent = stats.missed;
+            document.getElementById('res-wrong').textContent = stats.wrong;
+            document.getElementById('res-accuracy').textContent = accuracy + "%";
+
+            resultScreen.classList.remove('hidden');
+            renderChart();
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            const lastData = stats.history.slice(-10); // Show last 10
+            
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: lastData.map((_, i) => i + 1),
+                    datasets: [{
+                        label: '准确率 (%)',
+                        data: lastData.map(d => d.acc),
+                        borderColor: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { display: false }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Global Listeners
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); handleInput(); } });
+        document.getElementById('game-container').addEventListener('mousedown', (e) => { e.preventDefault(); handleInput(); });
+        document.getElementById('game-container').addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(); });
+
+        // Initial Load
+        loadStats();
+    </script>
+</body>
+</html>
