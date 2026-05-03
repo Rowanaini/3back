@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3-Back 记忆力挑战 Pro - AI Powered</title>
+    <title>3-Back 记忆训练 Pro - AI & 数据驱动</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -16,332 +16,186 @@
             --card-bg: rgba(30, 41, 59, 0.7);
         }
 
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
 
         body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Inter', -apple-system, sans-serif; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden;
         }
 
-        /* 游戏进度条 */
-        #progress-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            z-index: 100;
-        }
+        #progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); z-index: 100; }
+        #progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary-color), var(--accent-color)); transition: width 0.3s ease; }
 
-        #progress-bar {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-            transition: width 0.3s ease;
-        }
-
-        #hud {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            opacity: 0.8;
-            display: flex;
-            gap: 20px;
-        }
-
+        #hud { position: fixed; bottom: 20px; left: 20px; font-size: 1.2rem; font-weight: bold; opacity: 0.8; display: flex; gap: 20px; }
         #n-display { color: var(--accent-color); }
         #combo-display { color: var(--primary-color); }
 
-        #game-container {
-            text-align: center;
-            width: 100%;
-            max-width: 600px;
-            padding: 20px;
-            cursor: pointer;
-        }
-
-        #letter {
-            font-size: 150px;
-            font-weight: 800;
-            min-height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.2s ease;
-            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
-        }
-
-        @keyframes scaleIn {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
-        }
+        #game-container { text-align: center; width: 100%; max-width: 600px; padding: 20px; cursor: pointer; }
+        #display-content { font-size: 150px; font-weight: 800; min-height: 200px; display: flex; align-items: center; justify-content: center; text-shadow: 0 10px 20px rgba(0,0,0,0.3); }
 
         .animate-in { animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        .animate-out { animation: fadeOut 0.3s ease forwards; }
+        @keyframes scaleIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            z-index: 200;
-            padding: 40px 20px;
-            overflow-y: auto;
-        }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); display: flex; flex-direction: column; align-items: center; z-index: 200; padding: 40px 20px; overflow-y: auto; }
+        .config-card { background: var(--card-bg); padding: 20px; border-radius: 20px; width: 100%; max-width: 500px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); position: relative; }
 
-        .config-card {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 20px;
-            width: 100%;
-            max-width: 500px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-            position: relative;
-        }
-
-        h1 { font-size: 2rem; color: var(--primary-color); margin-top: 0; }
-        h2 { font-size: 1.2rem; color: var(--accent-color); margin-top: 0; }
+        h1 { font-size: 1.8rem; color: var(--primary-color); margin-top: 0; }
+        .val-preview { float: right; color: var(--primary-color); font-weight: bold; }
         
-        input[type="range"] {
-            width: 100%;
-            accent-color: var(--primary-color);
-            cursor: pointer;
-        }
+        .btn { background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border: none; padding: 12px 35px; font-size: 1.1rem; font-weight: bold; border-radius: 50px; cursor: pointer; transition: transform 0.2s; margin-top: 10px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(56, 189, 248, 0.3); }
 
-        .val-preview { float: right; color: var(--text-color); font-weight: bold; }
-
-        .btn {
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: transform 0.2s;
-            margin: 5px;
-        }
-
-        /* 教程专用样式 */
-        .tutorial-step {
-            text-align: left;
-            margin-bottom: 25px;
-            line-height: 1.6;
-        }
-        .tutorial-visual {
-            background: rgba(0,0,0,0.3);
-            border-radius: 12px;
-            padding: 15px;
-            margin: 10px 0;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            font-family: monospace;
-            font-size: 1.2rem;
-        }
-        .highlight-match {
-            border: 2px solid var(--success-color);
-            padding: 5px 10px;
-            border-radius: 8px;
-            color: var(--success-color);
-            font-weight: bold;
-            position: relative;
-        }
-        .highlight-match::after {
-            content: "MATCH!";
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px;
-        }
-
-        #ai-feedback {
-            margin-top: 10px;
-            padding: 15px;
-            background: rgba(99, 102, 241, 0.1);
-            border-left: 4px solid var(--accent-color);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            color: #cbd5e1;
-        }
-
-        #ai-motto {
-            font-style: italic;
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            min-height: 1.5em;
-        }
-
-        .help-icon {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            cursor: pointer;
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-            z-index: 300;
-        }
-
+        select { background: #1e293b; color: white; border: 1px solid var(--primary-color); padding: 5px 10px; border-radius: 5px; cursor: pointer; outline: none; }
         .hidden { display: none !important; }
+        
+        .help-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; opacity: 0.7; }
+        .help-icon:hover { opacity: 1; }
 
-        @media (max-width: 600px) {
-            #letter { font-size: 120px; }
-        }
+        #ai-feedback { font-size: 0.9rem; line-height: 1.5; color: #cbd5e1; min-height: 50px; }
+        .loading-dots:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
+        @keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60% { content: '...'; } 80%, 100% { content: ''; } }
+
+        /* 教程特有样式 */
+        .tut-step { margin-bottom: 20px; }
+        .tut-visual { display: flex; justify-content: center; gap: 10px; margin: 15px 0; }
+        .tut-box { width: 40px; height: 40px; border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 8px; position: relative; }
+        .tut-box.ref { border-color: var(--accent-color); background: rgba(99, 102, 241, 0.2); }
+        .tut-box.target { border-color: var(--success-color); background: rgba(34, 197, 94, 0.2); }
+        .tut-box.target::after { content: 'MATCH!'; position: absolute; top: -20px; font-size: 10px; color: var(--success-color); white-space: nowrap; }
+        .tut-arrow { display: flex; align-items: center; color: var(--primary-color); font-weight: bold; }
+        .highlight-red { color: var(--error-color); font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="progress-container">
-        <div id="progress-bar"></div>
-    </div>
-
+    <div id="progress-container"><div id="progress-bar"></div></div>
+    
     <div id="hud">
         <div id="n-display">N-Back: 3</div>
         <div id="combo-display">Combo: 0</div>
     </div>
 
     <div id="game-container">
-        <div id="letter"></div>
-    </div>
-
-    <!-- 教程遮罩层 -->
-    <div id="tutorial-overlay" class="overlay hidden">
-        <h1>新手图文教程</h1>
-        <div class="config-card">
-            <div class="tutorial-step">
-                <h2>1. 什么是 N-Back？</h2>
-                <p>观察屏幕上出现的字母。当 <b>当前的字母</b> 与 <b>N个位置之前</b> 的字母相同时，就是一次“匹配”。</p>
-            </div>
-            
-            <div class="tutorial-step">
-                <h2>2. 图解规则 (以 2-Back 为例)</h2>
-                <div class="tutorial-visual">
-                    <span>X</span> <span>Y</span> <span class="highlight-match">X</span> <span>Z</span>
-                </div>
-                <p>当看到第二个 X 时，因为它和两个位置之前的 X 一样，你应该立即点击！注意：前 N 个字母因为没有参照物，点击是错误的。</p>
-            </div>
-
-            <div class="tutorial-step">
-                <h2>3. 操作提醒</h2>
-                <p>看到匹配项时：手机点击屏幕任意位置，电脑按下空格键。</p>
-            </div>
-        </div>
-        <button class="btn" onclick="closeTutorial()">我学会了，开始挑战</button>
+        <div id="display-content"></div>
     </div>
 
     <!-- 开始界面 -->
     <div id="start-screen" class="overlay">
-        <div class="help-icon" onclick="openTutorial()" title="查看教程">
+        <div class="help-icon" onclick="openTutorial()">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
         </div>
         <h1>3-Back 记忆训练 Pro</h1>
-        
-        <div id="ai-motto">正在加载 AI 指令...</div>
+        <div id="ai-motto" style="margin-bottom: 20px; font-style: italic; color: #94a3b8; font-size: 0.9rem;">正在连接 Gemini 神经元...</div>
 
         <div class="config-card">
             <div style="margin-bottom:15px">
-                <label>难度 (N) <span class="val-preview" id="n-val">3</span></label>
-                <input type="range" id="n-slider" min="1" max="5" step="1" value="3">
+                <label>训练内容模式</label>
+                <select id="mode-select" class="val-preview">
+                    <option value="letters">A-Z 字母</option>
+                    <option value="numbers">0-9 数字</option>
+                </select>
             </div>
             <div style="margin-bottom:15px">
-                <label>训练长度 (字母总数) <span class="val-preview" id="total-val">20</span></label>
-                <input type="range" id="total-slider" min="10" max="100" step="5" value="20">
+                <label>难度等级 (N) <span class="val-preview" id="n-val">3</span></label>
+                <input type="range" id="n-slider" min="1" max="5" value="3" style="width:100%">
+            </div>
+            <div style="margin-bottom:15px">
+                <label>训练序列长度 <span class="val-preview" id="total-val">30</span></label>
+                <input type="range" id="total-slider" min="10" max="100" step="5" value="30" style="width:100%">
             </div>
             <div>
-                <label>速度 (秒) <span class="val-preview" id="speed-val">2.0s</span></label>
-                <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="2.0">
+                <label>切换速度 (秒) <span class="val-preview" id="speed-val">2.0s</span></label>
+                <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="2.0" style="width:100%">
             </div>
         </div>
 
-        <div class="config-card">
-            <div id="high-score-board" style="font-size: 0.85rem; color: #94a3b8;">加载历史中...</div>
-        </div>
-
-        <button class="btn" onclick="startGame()">立即开始</button>
+        <button class="btn" onclick="startGame()">开始训练</button>
     </div>
 
     <!-- 结果界面 -->
     <div id="result-screen" class="overlay hidden">
-        <h1>训练报告</h1>
-        <div style="width:100%; max-width:500px; height:180px;">
-            <canvas id="growthChart"></canvas>
+        <h1>训练分析报告</h1>
+        <div class="config-card" style="padding: 10px;">
+            <canvas id="growthChart" height="180"></canvas>
         </div>
-        
-        <div class="config-card" style="margin-top:15px">
-            <div id="ai-feedback">AI 正在思考你的表现...</div>
+        <div class="config-card">
+            <h3 style="margin: 0 0 10px 0; font-size: 1rem; color: var(--accent-color);">✨ AI 战报点评</h3>
+            <div id="ai-feedback">分析中...</div>
         </div>
+        <button class="btn" onclick="location.reload()">回到主页</button>
+    </div>
 
-        <button class="btn" onclick="showStartScreen()">再练一次</button>
+    <!-- 引导界面 -->
+    <div id="tutorial-overlay" class="overlay hidden">
+        <h1>新手教学 (v3.0)</h1>
+        <div class="config-card" style="text-align:left; line-height:1.6; font-size: 0.9rem;">
+            <div class="tut-step">
+                <b>1. 理解 N-Back 逻辑</b>
+                <p>以 2-Back 为例，你需要对比的是“当前字符”与“往前数第 2 个”：</p>
+                <div class="tut-visual">
+                    <div class="tut-box ref">A</div>
+                    <div class="tut-box">B</div>
+                    <div class="tut-arrow">⬅️</div>
+                    <div class="tut-box target">A</div>
+                </div>
+                <small>上图中，当前看到 A，往前数两个也是 A，这就是一次<b>匹配</b>！</small>
+            </div>
+
+            <div class="tut-step">
+                <b>2. 核心操作</b>
+                <p>看到匹配项时，立即按【空格】或【点击屏幕】。颜色会变绿表示成功。</p>
+            </div>
+
+            <div class="tut-step">
+                <b>3. ⚠️ 必错禁区</b>
+                <p>每一局开始的 <span class="highlight-red">前 N 个</span> 字符，因为前面没有任何参照物：</p>
+                <div class="tut-visual">
+                    <div class="tut-box highlight-red">?</div>
+                    <div class="tut-box highlight-red">?</div>
+                    <div class="tut-box highlight-red">?</div>
+                </div>
+                <p class="highlight-red">在这期间点击屏幕，系统将判定为错误！</p>
+            </div>
+        </div>
+        <button class="btn" onclick="closeTutorial()">准备好了，开始！</button>
     </div>
 
     <script>
-        const apiKey = ""; 
+        const apiKey = ""; // 环境变量自动注入
         const MODEL_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
-        const TUTORIAL_VERSION = "v1.2"; // 更新版本号
+        const TUTORIAL_VER = "v3.0";
 
-        const letterEl = document.getElementById('letter');
-        const progressBar = document.getElementById('progress-bar');
-        const comboEl = document.getElementById('combo-display');
-        const startScreen = document.getElementById('start-screen');
-        const resultScreen = document.getElementById('result-screen');
-        const tutorialOverlay = document.getElementById('tutorial-overlay');
-        const aiMottoEl = document.getElementById('ai-motto');
-        const aiFeedbackEl = document.getElementById('ai-feedback');
+        let config = { n: 3, total: 30, speed: 2000, mode: 'letters' };
+        let gameData = { seq: [], current: -1, correct: 0, wrong: 0, combo: 0, hasReacted: false, history: [] };
+        let timer = null;
+        let chartInstance = null;
 
-        let config = { n: 3, interval: 2000, total: 20 };
-        let stats = { correct: 0, missed: 0, wrong: 0, combo: 0, history: [] };
-        let sequence = [];
-        let currentIndex = -1;
-        let gameTimer = null;
-        let hasReacted = false;
+        window.onload = () => {
+            const saved = localStorage.getItem('nback_pro_stats');
+            if(saved) gameData.history = JSON.parse(saved);
+            
+            if(localStorage.getItem('nback_tutorial_seen') !== TUTORIAL_VER) {
+                setTimeout(openTutorial, 500);
+            }
 
-        // 设置滑动条交互
-        document.getElementById('n-slider').oninput = function() {
-            document.getElementById('n-val').textContent = this.value;
-            config.n = parseInt(this.value);
-        };
-        document.getElementById('total-slider').oninput = function() {
-            document.getElementById('total-val').textContent = this.value;
-            config.total = parseInt(this.value);
-        };
-        document.getElementById('speed-slider').oninput = function() {
-            document.getElementById('speed-val').textContent = this.value + 's';
-            config.interval = parseFloat(this.value) * 1000;
+            initControls();
+            fetchAIQuote();
         };
 
-        // API
-        async function callAI(prompt) {
+        function initControls() {
+            const nS = document.getElementById('n-slider');
+            const tS = document.getElementById('total-slider');
+            const sS = document.getElementById('speed-slider');
+            const mS = document.getElementById('mode-select');
+
+            nS.oninput = () => { config.n = parseInt(nS.value); document.getElementById('n-val').innerText = config.n; };
+            tS.oninput = () => { config.total = parseInt(tS.value); document.getElementById('total-val').innerText = config.total; };
+            sS.oninput = () => { config.speed = sS.value * 1000; document.getElementById('speed-val').innerText = sS.value + 's'; };
+            mS.onchange = () => { config.mode = mS.value; };
+        }
+
+        async function callGemini(prompt) {
             try {
                 const res = await fetch(`${MODEL_URL}?key=${apiKey}`, {
                     method: "POST",
@@ -349,129 +203,142 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
                 const data = await res.json();
-                return data.candidates[0].content.parts[0].text;
+                return data.candidates?.[0]?.content?.parts?.[0]?.text;
             } catch (e) { return null; }
         }
 
-        // 逻辑
-        function openTutorial() { tutorialOverlay.classList.remove('hidden'); }
-        function closeTutorial() { 
-            tutorialOverlay.classList.add('hidden'); 
-            localStorage.setItem('tutorial_version_seen', TUTORIAL_VERSION);
+        function fetchAIQuote() {
+            callGemini("生成一句短促、硬核、充满赛博朋克感的记忆力训练口号，15字以内。").then(txt => {
+                if(txt) document.getElementById('ai-motto').innerText = txt;
+            });
         }
 
-        function loadStats() {
-            const data = localStorage.getItem('nback_stats');
-            if (data) stats.history = JSON.parse(data);
-            
-            if (localStorage.getItem('tutorial_version_seen') !== TUTORIAL_VERSION) {
-                setTimeout(openTutorial, 500);
-            }
-
-            const board = document.getElementById('high-score-board');
-            if (stats.history.length === 0) {
-                board.textContent = "还没有挑战记录，开始你的第一次训练吧！";
-            } else {
-                board.textContent = "历史记录已加载，点击右上角 ? 查看教程。";
-            }
-            
-            callAI("生成一句15字以内的硬核记忆力训练鼓励语").then(txt => {
-                if(txt) aiMottoEl.textContent = txt;
-            });
+        function openTutorial() { document.getElementById('tutorial-overlay').classList.remove('hidden'); }
+        function closeTutorial() { 
+            localStorage.setItem('nback_tutorial_seen', TUTORIAL_VER);
+            document.getElementById('tutorial-overlay').classList.add('hidden'); 
         }
 
         function startGame() {
-            startScreen.classList.add('hidden');
-            resultScreen.classList.add('hidden');
-            sequence = [];
-            const letters = "ABCDEFGHJKL";
-            // 确保序列生成中，前 N 位绝不会与自身 -N 位匹配（因为不存在）
+            document.getElementById('start-screen').classList.add('hidden');
+            gameData.seq = [];
+            gameData.current = -1;
+            gameData.correct = 0;
+            gameData.wrong = 0;
+            gameData.combo = 0;
+            
+            const pool = config.mode === 'letters' ? "ABCDEFGHJKLMNPQRSTUVWXYZ" : "0123456789";
             for(let i=0; i<config.total; i++) {
                 if(i >= config.n && Math.random() < 0.35) {
-                    sequence.push(sequence[i-config.n]);
+                    gameData.seq.push(gameData.seq[i - config.n]);
                 } else {
-                    let nextLetter;
-                    do {
-                        nextLetter = letters[Math.floor(Math.random()*letters.length)];
-                    } while (i >= config.n && nextLetter === sequence[i-config.n]);
-                    sequence.push(nextLetter);
+                    let c;
+                    do { c = pool[Math.floor(Math.random() * pool.length)]; } 
+                    while(i >= config.n && c === gameData.seq[i - config.n]);
+                    gameData.seq.push(c);
                 }
             }
-            currentIndex = -1;
-            stats.correct = 0; stats.missed = 0; stats.wrong = 0; stats.combo = 0;
-            comboEl.textContent = "Combo: 0";
-            nextStep();
+            nextTick();
         }
 
-        function nextStep() {
-            // 检查上一轮是否漏选
-            if (currentIndex >= config.n && !hasReacted && sequence[currentIndex] === sequence[currentIndex - config.n]) {
-                stats.missed++;
-                stats.combo = 0;
+        function nextTick() {
+            if(gameData.current >= config.n && !gameData.hasReacted) {
+                if(gameData.seq[gameData.current] === gameData.seq[gameData.current - config.n]) {
+                    gameData.combo = 0;
+                }
             }
+
+            gameData.current++;
+            if(gameData.current >= config.total) return finishGame();
+
+            gameData.hasReacted = false;
+            const display = document.getElementById('display-content');
+            display.innerText = gameData.seq[gameData.current];
+            display.style.color = "var(--text-color)";
+            display.classList.remove('animate-in');
+            void display.offsetWidth;
+            display.classList.add('animate-in');
+
+            document.getElementById('progress-bar').style.width = ((gameData.current + 1) / config.total * 100) + "%";
+            document.getElementById('n-display').innerText = `N-Back: ${config.n}`;
+            document.getElementById('combo-display').innerText = `Combo: ${gameData.combo}`;
             
-            currentIndex++;
-            if (currentIndex >= config.total) { endGame(); return; }
-            
-            hasReacted = false;
-            letterEl.textContent = sequence[currentIndex];
-            letterEl.style.color = "var(--text-color)";
-            letterEl.classList.remove('animate-in', 'animate-out');
-            void letterEl.offsetWidth;
-            letterEl.classList.add('animate-in');
-            progressBar.style.width = ((currentIndex+1)/config.total*100) + "%";
-            gameTimer = setTimeout(nextStep, config.interval);
+            timer = setTimeout(nextTick, config.speed);
         }
 
         function handleInput() {
-            if (hasReacted || currentIndex < 0) return;
-            hasReacted = true;
+            if(gameData.hasReacted || gameData.current < 0) return;
+            gameData.hasReacted = true;
 
-            // 核心逻辑修改：如果当前位置小于 N，按键必然是错的
-            const isEarlyStage = currentIndex < config.n;
-            const match = !isEarlyStage && sequence[currentIndex] === sequence[currentIndex-config.n];
+            const display = document.getElementById('display-content');
+            const isEarly = gameData.current < config.n;
+            const isMatch = !isEarly && (gameData.seq[gameData.current] === gameData.seq[gameData.current - config.n]);
 
-            if(match) {
-                stats.correct++; stats.combo++;
-                letterEl.style.color = "var(--success-color)";
+            if(isMatch) {
+                gameData.correct++;
+                gameData.combo++;
+                display.style.color = "var(--success-color)";
             } else {
-                // 误触（包括前 N 位按键）
-                stats.wrong++; stats.combo = 0;
-                letterEl.style.color = "var(--error-color)";
+                gameData.wrong++;
+                gameData.combo = 0;
+                display.style.color = "var(--error-color)";
             }
-            comboEl.textContent = "Combo: " + stats.combo;
+            document.getElementById('combo-display').innerText = `Combo: ${gameData.combo}`;
         }
 
-        function endGame() {
-            clearTimeout(gameTimer);
-            resultScreen.classList.remove('hidden');
+        function finishGame() {
+            clearTimeout(timer);
+            document.getElementById('result-screen').classList.remove('hidden');
             
-            // 统计总匹配数
             let totalMatches = 0;
-            for(let i = config.n; i < sequence.length; i++) {
-                if(sequence[i] === sequence[i-config.n]) totalMatches++;
+            for(let i=config.n; i<gameData.seq.length; i++) {
+                if(gameData.seq[i] === gameData.seq[i-config.n]) totalMatches++;
             }
+            const acc = totalMatches === 0 ? 0 : Math.round((gameData.correct / totalMatches) * 100);
             
-            const acc = totalMatches > 0 ? Math.round((stats.correct / totalMatches) * 100) : 0;
-            const score = { n: config.n, acc: Math.min(acc, 100), date: Date.now() };
-            stats.history.push(score);
-            localStorage.setItem('nback_stats', JSON.stringify(stats.history));
+            const record = { date: new Date().toLocaleTimeString(), acc: acc, n: config.n };
+            gameData.history.push(record);
+            if(gameData.history.length > 15) gameData.history.shift();
+            localStorage.setItem('nback_pro_stats', JSON.stringify(gameData.history));
+
+            renderChart();
             
-            callAI(`训练数据：N=${config.n}, 训练长度=${config.total}, 正确=${stats.correct}, 错误=${stats.wrong}。请用认知专家身份给出一句精准评价。`).then(txt => {
-                if(txt) aiFeedbackEl.textContent = txt;
+            document.getElementById('ai-feedback').innerHTML = '<span class="loading-dots">Gemini 正在分析你的神经网络</span>';
+            callGemini(`认知评估：N=${config.n}, 总量=${config.total}, 正确=${gameData.correct}, 错误=${gameData.wrong}。请针对我的表现给出一段专业的点评和提升建议。`).then(txt => {
+                document.getElementById('ai-feedback').innerText = txt || "保持这种训练频率，你的突触连接正在增强。";
             });
         }
 
-        function showStartScreen() {
-            resultScreen.classList.add('hidden');
-            startScreen.classList.remove('hidden');
-            loadStats();
+        function renderChart() {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: gameData.history.map(h => h.date),
+                    datasets: [{
+                        label: '准确率 (%)',
+                        data: gameData.history.map(h => h.acc),
+                        borderColor: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { min: 0, max: 100, ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        x: { display: false }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
         }
 
-        window.addEventListener('keydown', e => e.code === 'Space' && handleInput());
+        window.onkeydown = (e) => { if(e.code === 'Space') { e.preventDefault(); handleInput(); } };
         document.getElementById('game-container').onclick = handleInput;
-        
-        window.onload = loadStats;
     </script>
 </body>
 </html>
