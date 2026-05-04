@@ -67,13 +67,17 @@
         .value-neutral { color: var(--primary-color); }
         .value-accent { color: var(--accent-color); }
 
-        .review-map { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; max-height: 200px; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .review-map { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; overflow: hidden; transition: max-height 0.3s ease-out; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .review-map.collapsed { max-height: 110px; }
+        .review-map.expanded { max-height: 1000px; overflow-y: visible; }
+        
         .map-node { display: flex; flex-direction: column; align-items: center; width: 32px; flex-shrink: 0; }
         .node-icon { font-size: 14px; height: 18px; margin-bottom: 2px; }
         .node-char { width: 28px; height: 28px; background: #334155; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
         .node-char.is-match { border: 1px solid var(--primary-color); box-shadow: 0 0 5px rgba(56, 189, 248, 0.3); }
 
-        /* 战绩列表样式 */
+        .expand-btn { background: none; border: none; color: var(--primary-color); font-size: 0.75rem; cursor: pointer; padding: 5px; margin-top: 5px; width: 100%; text-decoration: underline; }
+
         .history-list { list-style: none; padding: 0; margin: 0; text-align: left; max-height: 350px; overflow-y: auto; }
         .history-item { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .history-item:last-child { border: none; }
@@ -135,7 +139,7 @@
             </div>
         </div>
 
-        <!-- 历史战绩卡片 (默认隐藏) -->
+        <!-- 历史战绩卡片 -->
         <div id="history-card" class="config-card hidden">
             <h3 style="margin: 0 0 15px 0; font-size: 1rem; color: var(--accent-color);">📝 往期训练分析报告</h3>
             <div id="history-content" class="history-list">
@@ -185,9 +189,10 @@
 
         <div class="config-card">
             <h3 style="margin: 0 0 10px 0; font-size: 1rem; color: var(--primary-color);">🔍 训练复盘图谱</h3>
-            <div id="review-map" class="review-map">
+            <div id="review-map" class="review-map collapsed">
                 <!-- 动态生成复盘节点 -->
             </div>
+            <button id="toggle-map-btn" class="expand-btn" onclick="toggleMapExpansion()">展开完整图谱 ↓</button>
             <div style="margin-top: 8px; font-size: 0.7rem; color: #94a3b8; text-align: center;">
                 ✅正确 | ⭕误触发 | ⚠️漏选 | ⭐起步位
             </div>
@@ -289,7 +294,6 @@
 
         function updateHistoryUI() {
             const history = JSON.parse(localStorage.getItem('nback_pro_stats') || "[]");
-            // 按时间倒序排列，显示最近的记录
             const recentHistory = [...history].reverse();
             const container = document.getElementById('history-content');
             
@@ -313,6 +317,20 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        function toggleMapExpansion() {
+            const map = document.getElementById('review-map');
+            const btn = document.getElementById('toggle-map-btn');
+            if (map.classList.contains('collapsed')) {
+                map.classList.remove('collapsed');
+                map.classList.add('expanded');
+                btn.innerText = "收起图谱 ↑";
+            } else {
+                map.classList.remove('expanded');
+                map.classList.add('collapsed');
+                btn.innerText = "展开完整图谱 ↓";
+            }
         }
 
         async function callGemini(prompt) {
@@ -466,7 +484,6 @@
                 missed: gameData.missed
             };
             
-            // 读取现有历史并更新
             const history = JSON.parse(localStorage.getItem('nback_pro_stats') || "[]");
             history.push(record);
             if(history.length > 50) history.shift();
