@@ -73,11 +73,13 @@
         .node-char { width: 28px; height: 28px; background: #334155; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
         .node-char.is-match { border: 1px solid var(--primary-color); box-shadow: 0 0 5px rgba(56, 189, 248, 0.3); }
 
-        /* 排行榜样式 */
-        .leaderboard-list { list-style: none; padding: 0; margin: 0; text-align: left; }
-        .leaderboard-item { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .leaderboard-item:last-child { border: none; }
-        .rank-num { color: var(--accent-color); font-weight: bold; width: 30px; display: inline-block; }
+        /* 战绩列表样式 */
+        .history-list { list-style: none; padding: 0; margin: 0; text-align: left; max-height: 350px; overflow-y: auto; }
+        .history-item { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .history-item:last-child { border: none; }
+        .history-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px; }
+        .history-details { display: flex; justify-content: space-between; align-items: center; }
+        .history-tag { background: rgba(56, 189, 248, 0.1); color: var(--primary-color); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
 
         .tut-step { margin-bottom: 20px; }
         .tut-visual { display: flex; justify-content: center; gap: 10px; margin: 15px 0; }
@@ -133,17 +135,17 @@
             </div>
         </div>
 
-        <!-- 排行榜卡片 (默认隐藏) -->
-        <div id="leaderboard-card" class="config-card hidden">
-            <h3 style="margin: 0 0 15px 0; font-size: 1rem; color: var(--accent-color);">🏆 全球战力排行榜 (Top 5)</h3>
-            <div id="leaderboard-content" class="leaderboard-list">
+        <!-- 历史战绩卡片 (默认隐藏) -->
+        <div id="history-card" class="config-card hidden">
+            <h3 style="margin: 0 0 15px 0; font-size: 1rem; color: var(--accent-color);">📝 往期训练分析报告</h3>
+            <div id="history-content" class="history-list">
                 <!-- 动态生成 -->
             </div>
         </div>
 
         <div style="display: flex;">
             <button class="btn" onclick="startGame()">开始训练</button>
-            <button class="btn btn-outline" id="toggle-leaderboard" onclick="toggleLeaderboard()">查看排行</button>
+            <button class="btn btn-outline" id="toggle-history" onclick="toggleHistory()">历史战绩</button>
         </div>
     </div>
 
@@ -254,7 +256,7 @@
             if(localStorage.getItem('nback_tutorial_seen') !== TUTORIAL_VER) setTimeout(openTutorial, 500);
             initControls();
             fetchAIQuote();
-            updateLeaderboardUI();
+            updateHistoryUI();
         };
 
         function initControls() {
@@ -269,37 +271,46 @@
             mS.onchange = () => { config.mode = mS.value; };
         }
 
-        function toggleLeaderboard() {
+        function toggleHistory() {
             const configCard = document.getElementById('main-config');
-            const rankCard = document.getElementById('leaderboard-card');
-            const btn = document.getElementById('toggle-leaderboard');
-            if(rankCard.classList.contains('hidden')) {
+            const historyCard = document.getElementById('history-card');
+            const btn = document.getElementById('toggle-history');
+            if(historyCard.classList.contains('hidden')) {
                 configCard.classList.add('hidden');
-                rankCard.classList.remove('hidden');
+                historyCard.classList.remove('hidden');
                 btn.innerText = "修改配置";
+                updateHistoryUI();
             } else {
                 configCard.classList.remove('hidden');
-                rankCard.classList.add('hidden');
-                btn.innerText = "查看排行";
+                historyCard.classList.add('hidden');
+                btn.innerText = "历史战绩";
             }
         }
 
-        function updateLeaderboardUI() {
+        function updateHistoryUI() {
             const history = JSON.parse(localStorage.getItem('nback_pro_stats') || "[]");
-            // 排序规则：准确率最高优先，准确率相同则看 N 难度
-            const topScores = [...history].sort((a,b) => (b.acc * b.n) - (a.acc * a.n)).slice(0, 5);
-            const container = document.getElementById('leaderboard-content');
+            // 按时间倒序排列，显示最近的记录
+            const recentHistory = [...history].reverse();
+            const container = document.getElementById('history-content');
             
-            if(topScores.length === 0) {
-                container.innerHTML = `<div style="text-align:center; color:#64748b; font-size:0.8rem;">暂无记录，快去训练吧！</div>`;
+            if(recentHistory.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#64748b; font-size:0.8rem; padding: 20px;">暂无历史报告，完成一次训练后自动生成。</div>`;
                 return;
             }
 
-            container.innerHTML = topScores.map((s, i) => `
-                <div class="leaderboard-item">
-                    <span><span class="rank-num">#${i+1}</span> N${s.n} 级别</span>
-                    <span class="value-success">${s.acc}% Acc</span>
-                    <span style="color:#64748b; font-size:0.7rem">${s.date.split(' ')[0]}</span>
+            container.innerHTML = recentHistory.map((s) => `
+                <div class="history-item">
+                    <div class="history-meta">
+                        <span>${s.date}</span>
+                        <span class="history-tag">N${s.n} 级别</span>
+                    </div>
+                    <div class="history-details">
+                        <span style="font-weight:bold; font-size:1.1rem;" class="${s.acc >= 80 ? 'value-success' : 'value-neutral'}">${s.acc}% 准确率</span>
+                        <div style="font-size:0.75rem; text-align:right; color:#94a3b8;">
+                            连击: ${s.maxCombo || 0} | 正确: ${s.correct || 0}<br>
+                            错误: ${s.wrong || 0} | 漏选: ${s.missed || 0}
+                        </div>
+                    </div>
                 </div>
             `).join('');
         }
@@ -449,11 +460,18 @@
                 date: new Date().toLocaleString(), 
                 acc: acc, 
                 n: config.n,
-                maxCombo: gameData.maxCombo
+                maxCombo: gameData.maxCombo,
+                correct: gameData.correct,
+                wrong: gameData.wrong,
+                missed: gameData.missed
             };
-            gameData.history.push(record);
-            if(gameData.history.length > 30) gameData.history.shift();
-            localStorage.setItem('nback_pro_stats', JSON.stringify(gameData.history));
+            
+            // 读取现有历史并更新
+            const history = JSON.parse(localStorage.getItem('nback_pro_stats') || "[]");
+            history.push(record);
+            if(history.length > 50) history.shift();
+            localStorage.setItem('nback_pro_stats', JSON.stringify(history));
+            gameData.history = history;
 
             renderChart();
             
